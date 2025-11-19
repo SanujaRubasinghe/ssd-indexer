@@ -93,13 +93,10 @@ func (m model) View() string {
 %s — Scanning...
 
 %s  %.1f%% complete
-
-%s
 `,
 			title,
 			m.spinner.View()+"  Scanning files...",
 			percent,
-			m.progress.View(),
 		)
 	}
 
