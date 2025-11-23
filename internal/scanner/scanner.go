@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 
 	"github.com/SanujaRubasinghe/ssdindexer/internal/categories"
 )
@@ -11,6 +12,8 @@ import (
 func Scan(root string, updateChan chan<- FileStats) (FileStats, error) {
 	var stats FileStats
 	stats.OtherExtensions = make(map[string]int64)
+	folderSizes := make(map[string]int64)
+	var folderMutex sync.Mutex
 
 	// First pass: count total files
 	totalFiles := countFiles(root)
@@ -54,6 +57,12 @@ func Scan(root string, updateChan chan<- FileStats) (FileStats, error) {
 					local.OtherExtensions[ext] += size
 				}
 				local.Total += size
+
+				// Track folder sizes
+				dir := filepath.Dir(path)
+				folderMutex.Lock()
+				folderSizes[dir] += size
+				folderMutex.Unlock()
 				processed++
 
 				// Send progress update more frequently for better UX
@@ -105,15 +114,26 @@ func Scan(root string, updateChan chan<- FileStats) (FileStats, error) {
 		totalProcessed += <-progressChan
 	}
 
-	// Send final update with 100% progress
+	// Convert folder sizes to slice for sorting
+	var folderSizesSlice []FolderSize
+	for path, size := range folderSizes {
+		folderSizesSlice = append(folderSizesSlice, FolderSize{
+			Path: path,
+			Size: size,
+		})
+	}
+
+	// Send final update with 100% progress and folder sizes
+	stats.FolderSizes = folderSizesSlice
 	updateChan <- FileStats{
-		Photos:     stats.Photos,
-		Videos:     stats.Videos,
-		Docs:       stats.Docs,
-		Compressed: stats.Compressed,
-		Others:     stats.Others,
-		Total:      1000000, // 100% complete
+		Photos:         stats.Photos,
+		Videos:         stats.Videos,
+		Docs:           stats.Docs,
+		Compressed:     stats.Compressed,
+		Others:         stats.Others,
+		Total:          1000000, // 100% complete
 		OtherExtensions: stats.OtherExtensions,
+		FolderSizes:    folderSizesSlice,
 	}
 
 	return stats, nil

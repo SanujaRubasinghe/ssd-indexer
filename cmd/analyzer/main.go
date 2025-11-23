@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/SanujaRubasinghe/ssdindexer/internal/scanner"
 	"github.com/SanujaRubasinghe/ssdindexer/internal/ui"
@@ -10,10 +11,23 @@ import (
 )
 
 func main() {
-	path := "/"
+	// Default to current working directory if no path is provided
+	path, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Error getting current directory: %v\n", err)
+		os.Exit(1)
+	}
 
+	// Use first argument as path if provided
 	if len(os.Args) > 1 {
 		path = os.Args[1]
+	}
+
+	// Convert to absolute path
+	path, err = filepath.Abs(path)
+	if err != nil {
+		fmt.Printf("Error getting absolute path: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Create the TUI model

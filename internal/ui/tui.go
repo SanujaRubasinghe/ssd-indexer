@@ -113,6 +113,24 @@ func (m model) View() string {
 		}
 	}
 
+	// Get top 5 largest folders
+	topFolders := m.stats.GetTopFolders(5)
+	folderDetails := ""
+	for i, folder := range topFolders {
+		if folder.Size > 0 {
+			// Get the last two components of the path for display
+			displayPath := folder.Path
+			if len(displayPath) > 40 {
+				// If path is too long, show the last 40 characters with ellipsis
+				displayPath = "..." + displayPath[max(0, len(displayPath)-40):]
+			}
+			folderDetails += fmt.Sprintf("    %d. %-40s  %s\n", 
+				i+1, 
+				displayPath, 
+				formatSize(folder.Size))
+		}
+	}
+
 	return fmt.Sprintf(`
 %s — DONE
 
@@ -122,6 +140,9 @@ Memory Composition:
 %s
 %s
 %s
+%s
+
+Top 5 Largest Folders:
 %s
 
 Top Extensions (Other):
@@ -136,6 +157,7 @@ Press Q to quit
 		m.bar("Docs  ", pct(m.stats.Docs, m.stats.Total), "#50A7FF", m.stats.Docs),
 		m.bar("Compressed", pct(m.stats.Compressed, m.stats.Total), "#FF00FF", m.stats.Compressed),
 		m.bar("Other ", pct(m.stats.Others, m.stats.Total), "#AAAAAA", m.stats.Others),
+		folderDetails,
 		extensionDetails,
 		float64(m.stats.Total)/(1024*1024*1024),
 	)
@@ -182,7 +204,14 @@ func formatSize(bytes int64) string {
 		div *= unit
 		exp++
 	}
-	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+	return fmt.Sprintf("%7.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func tickCmd() tea.Cmd {
